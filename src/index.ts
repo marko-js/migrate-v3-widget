@@ -20,5 +20,5 @@ export default async function migrateFile(
     options.onContext(hub);
   }
   nodePath.traverse(visitor);
-  return print(ast);
+  return print(ast).code;
 }

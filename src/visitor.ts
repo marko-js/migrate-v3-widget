@@ -69,6 +69,6 @@ function isMarkoWidgetsRequire(node: CallExpression) {
     t.isIdentifier(callee) &&
     callee.name === "require" &&
     t.isStringLiteral(arg) &&
-    arg.value === "marko-widgets"
+    (arg.value === "marko-widgets" || arg.value === "marko/legacy-components")
   );
 }
