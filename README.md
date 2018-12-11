@@ -28,6 +28,8 @@ _Note: You probably want to use the [marko migrate](https://github.com/marko-js/
 
 # Installation
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/marko-js/migrate-v3-widget.svg)](https://greenkeeper.io/)
+
 ```console
 npm install @marko/migrate-v3-widget
 ```
