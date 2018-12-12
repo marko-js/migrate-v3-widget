@@ -4,5 +4,15 @@ import Hub from "../hub";
 
 export default (path: NodePath<ObjectMethod | ObjectProperty>) => {
   const hub = path.hub as Hub;
-  hub.usesGetInitialBody = true;
+  hub.addMigrator({
+    apply(helper) {
+      if (helper.has("getInitialBody")) {
+        return helper.run("getInitialBody");
+      }
+
+      console.warn(
+        "Unable to migrate 'getInitialBody' method, you must first upgrade Marko"
+      );
+    }
+  });
 };

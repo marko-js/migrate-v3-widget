@@ -4,6 +4,11 @@ import { codeFrameColumns } from "@babel/code-frame";
 import { File, Node, Program, Identifier, ObjectMethod } from "@babel/types";
 const CWD = process.cwd();
 
+interface MigrateHelper {
+  run(name: string, ...args): Promise<void>;
+  has(name: string): boolean;
+}
+
 export default class Hub extends BabelHub {
   public markoWidgetsIdentifier?: Identifier;
   public lifecycleMethods?: {
@@ -14,7 +19,6 @@ export default class Hub extends BabelHub {
     onUpdate: ObjectMethod;
     onDestroy: ObjectMethod;
   };
-  public usesGetTemplateData?: boolean;
   public usesGetInitialBody?: boolean;
 
   constructor(
@@ -49,4 +53,10 @@ export default class Hub extends BabelHub {
 
     return nodePath;
   }
+
+  public addMigrator(options: {
+    name?: string;
+    description?: string;
+    apply: (helper: MigrateHelper, ...args) => Promise<void> | void;
+  }): void {}
 }

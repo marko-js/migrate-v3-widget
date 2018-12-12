@@ -4,5 +4,15 @@ import Hub from "../hub";
 
 export default (path: NodePath<ObjectMethod | ObjectProperty>) => {
   const hub = path.hub as Hub;
-  hub.usesGetTemplateData = true;
+  hub.addMigrator({
+    apply(helper) {
+      if (helper.has("getTemplateData")) {
+        return helper.run("getTemplateData");
+      }
+
+      console.warn(
+        "Unable to migrate 'getTemplateData' method, you must first upgrade Marko"
+      );
+    }
+  });
 };
