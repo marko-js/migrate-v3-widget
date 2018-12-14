@@ -54,7 +54,7 @@ export default class Hub extends BabelHub {
     return nodePath;
   }
 
-  public addMigrator(options: {
+  public addMigration(options: {
     name?: string;
     description?: string;
     apply: (helper: MigrateHelper, ...args) => Promise<void> | void;

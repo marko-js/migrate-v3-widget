@@ -4,7 +4,7 @@ import Hub from "../hub";
 
 export default (path: NodePath<ObjectMethod | ObjectProperty>) => {
   const hub = path.hub as Hub;
-  hub.addMigrator({
+  hub.addMigration({
     apply(helper) {
       if (helper.has("getTemplateData")) {
         return helper.run("getTemplateData");
