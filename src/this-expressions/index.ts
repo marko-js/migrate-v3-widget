@@ -2,10 +2,12 @@ import { MemberExpression, Identifier } from "@babel/types";
 import { NodePath } from "@babel/traverse";
 import getWidget from "./getWidget";
 import getWidgets from "./getWidgets";
+import setProps from "./setProps";
 
 const MEMBER_LOOKUP = {
   getWidget,
-  getWidgets
+  getWidgets,
+  setProps
 };
 
 export default function(path: NodePath<MemberExpression>): void {

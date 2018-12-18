@@ -29,6 +29,12 @@ module.exports = markoWidgets.defineComponent({
   init(config) {
     this.getWidget("x");
     console.log("init");
+
+    setTimeout(() => {
+      this.setProps({
+        a: 1
+      });
+    });
   },
   onBeforeUpdate() {
     console.log("before update");

@@ -39,6 +39,12 @@ module.exports = {
     this.getComponent("x");
     console.log("init");
 
+    setTimeout(() => {
+      this.input = {
+        a: 1
+      };
+    });
+
     this.legacyOnRender({
       firstRender: true
     });
