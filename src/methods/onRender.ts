@@ -7,7 +7,7 @@ export default (path: NodePath<ObjectMethod | ObjectProperty>) => {
   const { node } = path;
   const { onMount, onUpdate } = (path.hub as Hub).lifecycleMethods;
 
-  onMount.body.body.unshift(
+  onMount.body.body.push(
     t.expressionStatement(
       t.callExpression(
         t.memberExpression(t.thisExpression(), t.identifier("legacyOnRender")),
@@ -23,7 +23,7 @@ export default (path: NodePath<ObjectMethod | ObjectProperty>) => {
     )
   );
 
-  onUpdate.body.body.unshift(
+  onUpdate.body.body.push(
     t.expressionStatement(
       t.callExpression(
         t.memberExpression(t.thisExpression(), t.identifier("legacyOnRender")),

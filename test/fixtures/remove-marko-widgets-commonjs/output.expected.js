@@ -35,21 +35,21 @@ module.exports = {
   },
 
   onMount() {
-    this.legacyOnRender({
-      firstRender: true
-    });
-
     var widgetConfig = this.widgetConfig;
     this.getComponent("x");
     console.log("init");
+
+    this.legacyOnRender({
+      firstRender: true
+    });
   },
 
   onUpdate() {
+    console.log("update");
+
     this.legacyOnRender({
       firstRender: false
     });
-
-    console.log("update");
   },
 
   onDestroy() {
