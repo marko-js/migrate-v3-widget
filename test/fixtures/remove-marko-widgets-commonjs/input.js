@@ -26,6 +26,10 @@ module.exports = markoWidgets.defineComponent({
       time: new Date()
     });
   },
+  getInitialBody(input) {
+    const defaultValue = "Default";
+    return input.renderBody || defaultValue;
+  },
   init(config) {
     this.getWidget("x");
     console.log("init");

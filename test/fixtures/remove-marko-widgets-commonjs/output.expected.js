@@ -28,6 +28,9 @@ module.exports = {
       input,
       a: "b"
     };
+
+    const defaultValue = "Default";
+    this.input.renderBody = input.renderBody || defaultValue;
   },
 
   onRender() {
