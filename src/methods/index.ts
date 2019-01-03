@@ -19,6 +19,7 @@ import getWidgetConfig from "./getWidgetConfig";
 import getInitialBody from "./getInitialBody";
 import template from "./template";
 import Hub from "../hub";
+import getNewComponentPath from "../util/get-new-component-path";
 
 const METHOD_LOOKUP = {
   template,
@@ -35,7 +36,10 @@ const METHOD_LOOKUP = {
   onDestroy
 };
 
-export default function(path: NodePath<ObjectExpression>): void {
+export default function(
+  path: NodePath<ObjectExpression>,
+  type: "defineComponent" | "defineWidget"
+): void {
   const { node } = path;
   const hub = path.hub as Hub;
   hub.lifecycleMethods = {
@@ -93,6 +97,52 @@ export default function(path: NodePath<ObjectExpression>): void {
         binding.path.remove();
       }
     });
+  });
+
+  hub.addMigration({
+    async apply(helper) {
+      const shouldRename = await helper.prompt({
+        type: "confirm",
+        message:
+          "Would you like to rename the component file?\n" +
+          "Note: Marko 4 automatically discovers these files based on the naming convention, you may be able to remove them from a browser.json file after this.",
+        initial: true
+      });
+
+      if (!shouldRename) {
+        return;
+      }
+
+      const componentFile = hub.filename;
+      const wasEntryPoint = type === "defineComponent";
+      const templateFile = hub.options.templateFile;
+      const newTemplateFile = wasEntryPoint
+        ? componentFile.replace(/\.[^.]+$/, ".marko")
+        : templateFile;
+      const newFile = getNewComponentPath(componentFile, newTemplateFile, type);
+
+      if (templateFile !== newTemplateFile) {
+        await helper.run("updateFilePath", {
+          from: templateFile,
+          to: newTemplateFile
+        });
+
+        await helper.run("updateDependentPaths", {
+          from: templateFile,
+          to: newTemplateFile
+        });
+      }
+
+      await helper.run("updateFilePath", {
+        from: componentFile,
+        to: newFile
+      });
+
+      await helper.run("updateDependentPaths", {
+        from: componentFile,
+        to: wasEntryPoint ? newTemplateFile : newFile
+      });
+    }
   });
 }
 

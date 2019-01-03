@@ -12,7 +12,9 @@ describe("CODEMOD", () => {
     const entryFile = path.join(entryDir, "input.js");
     it(entry, async () => {
       try {
-        const code = await transform(entryFile);
+        const code = await transform(entryFile, {
+          templateFile: "./index.marko"
+        });
         snapshot(entryDir, "output.js", code);
       } catch (err) {
         if (err.snapshot) {

@@ -25,11 +25,13 @@ export default {
       const hub = path.hub as Hub;
       const { markoWidgetsIdentifier } = hub;
 
-      if (
-        !t.isMemberExpression(callee) ||
-        !t.isIdentifier(callee.property) ||
-        callee.property.name !== "defineComponent"
-      ) {
+      if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
+        return;
+      }
+
+      const type = callee.property.name;
+
+      if (type !== "defineComponent" && type !== "defineWidget") {
         return;
       }
 
@@ -49,7 +51,7 @@ export default {
         return;
       }
 
-      transformMethods(argPath);
+      transformMethods(argPath, type);
       path.replaceWith(argPath);
     }
   },

@@ -7,6 +7,7 @@ const CWD = process.cwd();
 interface MigrateHelper {
   run(name: string, ...args): Promise<void>;
   has(name: string): boolean;
+  prompt(options: any): Promise<any>;
 }
 
 export default class Hub extends BabelHub {
@@ -24,7 +25,7 @@ export default class Hub extends BabelHub {
   constructor(
     public filename: string,
     public code: string,
-    public options = {}
+    public options: { templateFile?: string } = {}
   ) {
     super(filename, options);
     this.code = code;
