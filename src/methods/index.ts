@@ -114,20 +114,34 @@ export default function(
       }
 
       const componentFile = hub.filename;
+      const wasEntryPoint = type === "defineComponent";
       const templateFile = hub.options.templateFile;
-      const newFile = getNewComponentPath(componentFile, templateFile, type);
+      const newTemplateFile = wasEntryPoint
+        ? componentFile.replace(/\.[^.]+$/, ".marko")
+        : templateFile;
+      const newFile = getNewComponentPath(componentFile, newTemplateFile, type);
+
+      if (templateFile !== newTemplateFile) {
+        await helper.run("updateFilePath", {
+          from: templateFile,
+          to: newTemplateFile
+        });
+
+        await helper.run("updateDependentPaths", {
+          from: templateFile,
+          to: newTemplateFile
+        });
+      }
 
       await helper.run("updateFilePath", {
         from: componentFile,
         to: newFile
       });
 
-      if (type !== "defineComponent") {
-        await helper.run("updateDependentPaths", {
-          from: componentFile,
-          to: newFile
-        });
-      }
+      await helper.run("updateDependentPaths", {
+        from: componentFile,
+        to: wasEntryPoint ? newTemplateFile : newFile
+      });
     }
   });
 }
