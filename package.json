@@ -1,7 +1,7 @@
 {
   "name": "@marko/migrate-v3-widget",
   "description": "Migrates a Marko v3 widget to a v4 component.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "author": "Dylan Piercey <dpiercey@ebay.com>",
   "bugs": "https://github.com/marko-js/migrate-v3-widget/issues",
   "dependencies": {
