@@ -1,7 +1,7 @@
 import { relative } from "path";
+import { types as t } from "@babel/core";
 import { Hub as BabelHub, NodePath, Scope } from "@babel/traverse";
 import { codeFrameColumns } from "@babel/code-frame";
-import { File, Node, Program, Identifier, ObjectMethod } from "@babel/types";
 const CWD = process.cwd();
 
 interface MigrateHelper {
@@ -11,16 +11,8 @@ interface MigrateHelper {
 }
 
 export default class Hub extends BabelHub {
-  public markoWidgetsIdentifier?: Identifier;
-  public lifecycleMethods?: {
-    onCreate: ObjectMethod;
-    onInput: ObjectMethod;
-    onRender: ObjectMethod;
-    onMount: ObjectMethod;
-    onUpdate: ObjectMethod;
-    onDestroy: ObjectMethod;
-  };
-  public usesGetInitialBody?: boolean;
+  public markoWidgetsIdentifier?: t.Identifier;
+  public widgetType?: "defineComponent" | "defineWidget";
 
   constructor(
     public filename: string,
@@ -37,7 +29,7 @@ export default class Hub extends BabelHub {
     return this.code;
   }
 
-  public buildError(node: Node, msg: string): SyntaxError {
+  public buildError(node: t.Node, msg: string): SyntaxError {
     const { loc } = node;
     const frame = codeFrameColumns(this.code, loc, { highlightCode: true });
     const position = `(${loc.start.line},${loc.start.column})`;
@@ -46,10 +38,10 @@ export default class Hub extends BabelHub {
     );
   }
 
-  public createNodePath(ast: File) {
+  public createNodePath(ast: t.File) {
     const nodePath = new NodePath(this as any, ast);
     nodePath.node = ast;
-    nodePath.scope = new Scope(nodePath.get("program") as NodePath<Program>);
+    nodePath.scope = new Scope(nodePath.get("program") as NodePath<t.Program>);
     (nodePath.scope as any).init();
 
     return nodePath;

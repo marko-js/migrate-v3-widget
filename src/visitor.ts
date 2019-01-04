@@ -1,24 +1,24 @@
-import { types as t, PluginObj } from "@babel/core";
+import { types as t } from "@babel/core";
 import { NodePath } from "@babel/traverse";
-import { Identifier, CallExpression } from "@babel/types";
 import transformMethods from "./methods";
+import transformOptional from "./optional";
 import transformThisExpressions from "./this-expressions";
 import Hub from "./hub";
 
 export default {
   CallExpression: {
-    enter(path: NodePath<CallExpression>) {
+    enter(path: NodePath<t.CallExpression>) {
       const { parent, node } = path;
       const hub = path.hub as Hub;
 
       if (isMarkoWidgetsRequire(node)) {
         if (t.isVariableDeclarator(parent)) {
           path.parentPath.remove();
-          hub.markoWidgetsIdentifier = parent.id as Identifier;
+          hub.markoWidgetsIdentifier = parent.id as t.Identifier;
         }
       }
     },
-    exit(path: NodePath<CallExpression>) {
+    exit(path: NodePath<t.CallExpression>) {
       const {
         node: { callee }
       } = path;
@@ -42,16 +42,28 @@ export default {
         ) {
           return;
         }
-      } else if (!isMarkoWidgetsRequire(callee.object as CallExpression)) {
+      } else if (!isMarkoWidgetsRequire(callee.object as t.CallExpression)) {
         return;
       }
 
       const [argPath] = path.get("arguments");
       if (!argPath.isObjectExpression()) {
-        return;
+        throw argPath.buildCodeFrameError(
+          `Can only transform ${type} calls with a plain object as an argument.`
+        );
       }
 
-      transformMethods(argPath, type);
+      argPath.get("properties").forEach(propPath => {
+        if (propPath.isSpreadElement()) {
+          throw propPath.buildCodeFrameError(
+            "Cannot transform widgets with object spread."
+          );
+        }
+      });
+
+      hub.widgetType = type;
+      transformMethods(argPath);
+      transformOptional(argPath);
       path.replaceWith(argPath);
     }
   },
@@ -62,7 +74,7 @@ export default {
   }
 };
 
-function isMarkoWidgetsRequire(node: CallExpression) {
+function isMarkoWidgetsRequire(node: t.CallExpression) {
   const {
     callee,
     arguments: [arg]

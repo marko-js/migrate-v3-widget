@@ -1,156 +1,170 @@
 import { types as t } from "@babel/core";
-import {
-  ObjectMethod,
-  ObjectExpression,
-  ObjectProperty,
-  Identifier
-} from "@babel/types";
 import { NodePath } from "@babel/traverse";
-import getTemplateData from "./getTemplateData";
-import getInitialProps from "./getInitialProps";
-import getInitialState from "./getInitialState";
-import init from "./init";
-import onBeforeDestroy from "./onBeforeDestroy";
-import onDestroy from "./onDestroy";
-import onRender from "./onRender";
-import onUpdate from "./onUpdate";
-import onBeforeUpdate from "./onBeforeUpdate";
-import getWidgetConfig from "./getWidgetConfig";
-import getInitialBody from "./getInitialBody";
-import template from "./template";
+import getFunctionPath from "../util/get-function-path";
+import getObjectMethod from "../util/get-object-method";
+import isLastNode from "../util/is-last-node";
 import Hub from "../hub";
-import getNewComponentPath from "../util/get-new-component-path";
 
-const METHOD_LOOKUP = {
-  template,
-  getTemplateData,
-  getInitialProps,
-  getInitialState,
-  getInitialBody,
-  getWidgetConfig,
-  onRender,
-  init,
-  onBeforeUpdate,
+import * as onCreateTransform from "./on-create";
+import * as onDestroyTransform from "./on-destroy";
+import * as onInputTransform from "./on-input";
+import * as onMountTransform from "./on-mount";
+import * as onRenderLegacyTransform from "./on-render-legacy";
+import * as onRenderTransform from "./on-render";
+import * as onUpdate from "./on-update";
+
+const LIFECYCLE_MAP: Array<{
+  name: string;
+  params?: string[];
+  parts: Array<{
+    method: string;
+    replaceParams?: string[];
+    returnAs?: t.LVal;
+    map?(
+      body: NodePath<
+        t.ObjectMethod | t.FunctionExpression | t.FunctionDeclaration
+      >
+    ): t.Statement[];
+  }>;
+}> = [
+  onCreateTransform,
+  onInputTransform,
+  onRenderTransform,
+  onMountTransform,
   onUpdate,
-  onBeforeDestroy,
-  onDestroy
-};
+  onDestroyTransform,
+  onRenderLegacyTransform
+];
 
-export default function(
-  path: NodePath<ObjectExpression>,
-  type: "defineComponent" | "defineWidget"
-): void {
+export default function(path: NodePath<t.ObjectExpression>): void {
   const { node } = path;
-  const hub = path.hub as Hub;
-  hub.lifecycleMethods = {
-    onCreate: createLifecycleMethod("onCreate", ["input", "out"]),
-    onInput: createLifecycleMethod("onInput", ["input", "out"]),
-    onRender: createLifecycleMethod("onRender", ["out"]),
-    onMount: createLifecycleMethod("onMount"),
-    onUpdate: createLifecycleMethod("onUpdate"),
-    onDestroy: createLifecycleMethod("onDestroy")
-  };
+  const removePaths: NodePath[] = [];
+  const newProperties = LIFECYCLE_MAP.map(({ name, params = [], parts }) => {
+    const statements = [];
 
-  path.get("properties").forEach(propPath => {
-    if (propPath.isSpreadElement()) {
-      throw path.buildCodeFrameError(
-        "Cannot transform widgets with object spread."
+    for (const part of parts) {
+      const oldMethod = getObjectMethod(path, part.method);
+      if (!oldMethod) {
+        continue;
+      }
+
+      const functionPath = getFunctionPath(oldMethod, {
+        params: part.replaceParams
+      });
+      const bodyPath = functionPath.get("body");
+
+      // Update param names to be consistent.
+      if (part.replaceParams) {
+        functionPath.get("params").forEach((paramPath, i) => {
+          const replaceParam = part.replaceParams[i];
+
+          if (paramPath.isIdentifier()) {
+            bodyPath.scope.rename(paramPath.node.name, replaceParam);
+          }
+        });
+      }
+
+      // Map previous lifecycle returns to assignments.
+      let mustWrapInIIFE = false;
+      let lastReturnStatementPath: NodePath<t.ReturnStatement>;
+      bodyPath.traverse({
+        ReturnStatement(returnStatementPath: NodePath<t.ReturnStatement>) {
+          if (
+            bodyPath.scope !== returnStatementPath.scope.getFunctionParent()
+          ) {
+            return;
+          }
+
+          if (
+            returnStatementPath.parentPath !== bodyPath ||
+            !isLastNode(returnStatementPath)
+          ) {
+            mustWrapInIIFE = true;
+            returnStatementPath.stop();
+          }
+
+          lastReturnStatementPath = returnStatementPath;
+        }
+      });
+
+      if (mustWrapInIIFE) {
+        let replacement: t.Node = t.callExpression(
+          t.arrowFunctionExpression([], bodyPath.node),
+          []
+        );
+
+        if (part.returnAs) {
+          replacement = t.assignmentExpression("=", part.returnAs, replacement);
+        }
+
+        bodyPath.replaceWith(
+          t.blockStatement([t.expressionStatement(replacement)])
+        );
+      } else if (lastReturnStatementPath) {
+        if (part.returnAs) {
+          lastReturnStatementPath.replaceWith(
+            t.assignmentExpression(
+              "=",
+              part.returnAs,
+              lastReturnStatementPath.node.argument
+            )
+          );
+        } else {
+          lastReturnStatementPath.replaceWith(
+            lastReturnStatementPath.node.argument
+          );
+        }
+      }
+
+      // Remove references to the old method.
+      if (functionPath !== oldMethod && functionPath.parentPath !== oldMethod) {
+        removePaths.push(functionPath);
+      }
+
+      removePaths.push(oldMethod);
+      statements.push(
+        ...(part.map ? part.map(functionPath) : bodyPath.node.body)
       );
     }
 
-    const propNode = propPath.node as ObjectMethod | ObjectProperty;
-    let prop;
-    if (t.isIdentifier(propNode.key)) {
-      prop = propNode.key.name;
-    } else if (t.isStringLiteral(propNode.key)) {
-      prop = propNode.key.value;
-    } else {
+    if (!statements.length) {
       return;
     }
 
-    const transform = METHOD_LOOKUP[prop];
-    if (transform) {
-      transform(propPath);
+    return t.objectMethod(
+      "method",
+      t.identifier(name),
+      params.map(p => t.identifier(p)),
+      t.blockStatement(statements)
+    );
+  }).filter(Boolean);
+
+  const templateProp = getObjectMethod(path, "template");
+  if (templateProp) {
+    const templateValue = templateProp.get("value") as NodePath;
+    if (templateValue.isIdentifier()) {
+      templateProp.scope.getBinding(templateValue.node.name).path.remove();
     }
-  });
 
-  const lifecycleMethods = Object.values(hub.lifecycleMethods).filter(
-    ({ body }) => body.body.length
-  );
+    templateProp.remove();
+  }
 
-  node.properties.push(...lifecycleMethods);
+  removePaths.forEach(it => it.removed || it.remove());
+  node.properties.push(...newProperties);
 
+  // Remove unused params from new lifecycle methods.
   path.get("properties").forEach(propPath => {
-    if (!propPath.isObjectMethod()) {
+    if (!propPath.isObjectMethod() || !newProperties.includes(propPath.node)) {
       return;
     }
 
-    if (!lifecycleMethods.includes(propPath.node)) {
-      return;
-    }
-
-    const params = propPath.node.params as Identifier[];
-    const bodyPath = propPath.get("body");
-    params.forEach(({ name }) => {
-      const binding = bodyPath.scope.getBinding(name);
+    propPath.get("params").forEach(paramPath => {
+      const binding = paramPath.scope.getBinding(
+        (paramPath.node as t.Identifier).name
+      );
       if (!binding.references) {
-        binding.path.remove();
+        paramPath.remove();
       }
     });
   });
-
-  hub.addMigration({
-    async apply(helper) {
-      const shouldRename = await helper.prompt({
-        type: "confirm",
-        message:
-          "Would you like to rename the component file?\n" +
-          "Note: Marko 4 automatically discovers these files based on the naming convention, you may be able to remove them from a browser.json file after this.",
-        initial: true
-      });
-
-      if (!shouldRename) {
-        return;
-      }
-
-      const componentFile = hub.filename;
-      const wasEntryPoint = type === "defineComponent";
-      const templateFile = hub.options.templateFile;
-      const newTemplateFile = wasEntryPoint
-        ? componentFile.replace(/\.[^.]+$/, ".marko")
-        : templateFile;
-      const newFile = getNewComponentPath(componentFile, newTemplateFile, type);
-
-      if (templateFile !== newTemplateFile) {
-        await helper.run("updateFilePath", {
-          from: templateFile,
-          to: newTemplateFile
-        });
-
-        await helper.run("updateDependentPaths", {
-          from: templateFile,
-          to: newTemplateFile
-        });
-      }
-
-      await helper.run("updateFilePath", {
-        from: componentFile,
-        to: newFile
-      });
-
-      await helper.run("updateDependentPaths", {
-        from: componentFile,
-        to: wasEntryPoint ? newTemplateFile : newFile
-      });
-    }
-  });
-}
-
-function createLifecycleMethod(name, params = []) {
-  return t.objectMethod(
-    "method",
-    t.identifier(name),
-    params.map(param => t.identifier(param)),
-    t.blockStatement([])
-  );
 }
