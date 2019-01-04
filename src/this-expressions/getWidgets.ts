@@ -1,6 +1,6 @@
+import { types as t } from "@babel/core";
 import { NodePath } from "@babel/traverse";
-import { MemberExpression, Identifier } from "@babel/types";
 
-export default (path: NodePath<MemberExpression>) => {
-  (path.get("property") as NodePath<Identifier>).node.name = "getComponents";
+export default (path: NodePath<t.MemberExpression>) => {
+  (path.get("property") as NodePath<t.Identifier>).node.name = "getComponents";
 };

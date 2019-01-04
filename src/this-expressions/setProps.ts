@@ -1,5 +1,5 @@
+import { types as t } from "@babel/core";
 import { NodePath } from "@babel/traverse";
-import * as t from "@babel/types";
 
 export default (path: NodePath<t.MemberExpression>) => {
   const { parent } = path;

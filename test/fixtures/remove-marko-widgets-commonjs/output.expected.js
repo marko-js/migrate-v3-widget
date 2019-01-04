@@ -1,18 +1,11 @@
 module.exports = {
   getTemplateData(input, state) {
+    console.log("getTemplateData");
     return Object.assign({}, input, state);
   },
 
-  legacyOnRender(obj) {
-    if (obj.firstRender) {
-      console.log("first render");
-    } else {
-      console.log("second render");
-    }
-  },
-
   onCreate(input, out) {
-    console.log(out);
+    console.log("getInitialState", out);
 
     this.state = Object.assign({}, input, {
       time: new Date()
@@ -20,27 +13,43 @@ module.exports = {
   },
 
   onInput(input) {
-    this.input = Object.assign({}, input, {
+    console.log("getInitialProps");
+    const stuff = input.stuff.map(thing => {
+      return thing + 1;
+    });
+
+    this.input = Object.assign({ stuff }, input, {
       color: "green"
     });
 
-    this.widgetConfig = {
-      input,
-      a: "b"
-    };
+    this.widgetConfig = (() => {
+      console.log("getWidgetConfig");
 
+      if (input.x) {
+        return {
+          input,
+          a: "b"
+        };
+      }
+
+      return { y: true };
+    })();
+
+    console.log("getInitialBody");
     const defaultValue = "Default";
     this.input.renderBody = input.renderBody || defaultValue;
   },
 
   onRender() {
-    console.log("before update");
+    if (typeof window !== "undefined") {
+      console.log("onBeforeUpdate");
+    }
   },
 
   onMount() {
     var widgetConfig = this.widgetConfig;
     this.getComponent("x");
-    console.log("init");
+    console.log("init", widgetConfig.name);
 
     setTimeout(() => {
       this.input = {
@@ -48,21 +57,29 @@ module.exports = {
       };
     });
 
-    this.legacyOnRender({
+    this.onRenderLegacy({
       firstRender: true
     });
   },
 
   onUpdate() {
-    console.log("update");
+    console.log("onUpdate");
 
-    this.legacyOnRender({
+    this.onRenderLegacy({
       firstRender: false
     });
   },
 
   onDestroy() {
-    console.log("before destroy");
-    console.log("other destroy");
+    console.log("onBeforeDestroy");
+    console.log("onDestroy hoisted");
+  },
+
+  onRenderLegacy(event) {
+    if (event.firstRender) {
+      console.log("onRender: firstRender");
+    } else {
+      console.log("onRender: !firstRender");
+    }
   }
 };
