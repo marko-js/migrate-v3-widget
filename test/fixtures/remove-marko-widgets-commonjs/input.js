@@ -4,6 +4,10 @@ function otherDestroy() {
   console.log("onDestroy hoisted");
 }
 
+const otherUpdate = () => {
+  console.log("onUpdate");
+};
+
 module.exports = markoWidgets.defineComponent({
   template: require("./something.marko"),
   getWidgetConfig(input) {
@@ -37,7 +41,7 @@ module.exports = markoWidgets.defineComponent({
       time: new Date()
     });
   },
-  getInitialBody(input) {
+  getInitialBody: input => {
     console.log("getInitialBody");
     const defaultValue = "Default";
     return input.renderBody || defaultValue;
@@ -55,9 +59,7 @@ module.exports = markoWidgets.defineComponent({
   onBeforeUpdate() {
     console.log("onBeforeUpdate");
   },
-  onUpdate() {
-    console.log("onUpdate");
-  },
+  onUpdate: otherUpdate,
   onBeforeDestroy() {
     console.log("onBeforeDestroy");
   },

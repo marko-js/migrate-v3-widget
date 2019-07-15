@@ -22,7 +22,10 @@ const LIFECYCLE_MAP: Array<{
     returnAs?: t.LVal;
     map?(
       body: NodePath<
-        t.ObjectMethod | t.FunctionExpression | t.FunctionDeclaration
+        | t.ObjectMethod
+        | t.FunctionExpression
+        | t.FunctionDeclaration
+        | t.ArrowFunctionExpression
       >
     ): t.Statement[];
   }>;

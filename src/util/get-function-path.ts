@@ -10,7 +10,10 @@ export default (
   }
 
   const valuePath = path.get("value") as NodePath;
-  if (valuePath.isFunctionExpression()) {
+  if (
+    valuePath.isFunctionExpression() ||
+    valuePath.isArrowFunctionExpression()
+  ) {
     return valuePath;
   }
 
@@ -38,6 +41,13 @@ export default (
         return (valuePath as any) as NodePath<t.FunctionExpression>;
       } else if (binding.path.isFunctionDeclaration()) {
         return binding.path;
+      } else if (binding.path.isVariableDeclarator()) {
+        const init = binding.path.get("init");
+
+        if (init.isFunctionExpression() || init.isArrowFunctionExpression()) {
+          binding.path.remove();
+          return init;
+        }
       }
     }
   }
