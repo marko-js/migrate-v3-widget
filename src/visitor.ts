@@ -1,7 +1,7 @@
 import { types as t } from "@babel/core";
 import { NodePath } from "@babel/traverse";
 import transformMethods from "./methods";
-import transformOptional from "./optional";
+import * as transformOptional from "./optional";
 import transformThisExpressions from "./this-expressions";
 import Hub from "./hub";
 
@@ -62,8 +62,9 @@ export default {
       });
 
       hub.widgetType = type;
+      transformOptional.preMigrate(argPath);
       transformMethods(argPath);
-      transformOptional(argPath);
+      transformOptional.postMigrate(argPath);
       path.replaceWith(argPath);
     }
   },
