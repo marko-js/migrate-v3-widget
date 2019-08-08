@@ -1,9 +1,9 @@
 import { types as t } from "@babel/core";
 import { NodePath } from "@babel/traverse";
 import getFunctionPath from "../util/get-function-path";
+import getFunctionBodyBlock from "../util/get-function-body-block";
 import getObjectMethod from "../util/get-object-method";
 import isLastNode from "../util/is-last-node";
-import Hub from "../hub";
 
 import * as onCreateTransform from "./on-create";
 import * as onDestroyTransform from "./on-destroy";
@@ -54,7 +54,7 @@ export default function(path: NodePath<t.ObjectExpression>): void {
       const functionPath = getFunctionPath(oldMethod, {
         params: part.replaceParams
       });
-      const bodyPath = functionPath.get("body");
+      const bodyPath = getFunctionBodyBlock(functionPath);
 
       // Update param names to be consistent.
       if (part.replaceParams) {
